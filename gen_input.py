@@ -16,27 +16,31 @@ def output_text(db_url: str, output_path: str):
         kps = '. '.join([k.keyword_plus for k in wos_document.keyword_plus]) + '.\n' if len(
             wos_document.keyword_plus) > 0 else ''
 
-        cache.append(title + ks + kps + abs + '\n\n')
+        with open(r'{}/{}.txt'.format(output_path, uid), mode='w', encoding='utf-8') as file:
+            file.write(title + ks + kps + abs)
 
-        if len(cache) >= 30:
-            with open(r'{}/{}.txt'.format(output_path, uid), mode='w', encoding='utf-8') as file:
-                file.writelines(cache)
-                cache.clear()
-
-    if len(cache) > 0:
-        with open(r'{}/last.txt'.format(output_path), mode='w', encoding='utf-8') as file:
-            file.writelines(cache)
-            cache.clear()
+    #     cache.append(title + ks + kps + abs + '\n\n')
+    #
+    #     if len(cache) >= 30:
+    #         with open(r'{}/{}.txt'.format(output_path, uid), mode='w', encoding='utf-8') as file:
+    #             file.writelines(cache)
+    #             cache.clear()
+    #
+    # if len(cache) > 0:
+    #     with open(r'{}/last.txt'.format(output_path), mode='w', encoding='utf-8') as file:
+    #         file.writelines(cache)
+    #         cache.clear()
 
     session.close()
 
 
 def output_list(file_path: str, list_path: str):
     with open(list_path, mode='w', encoding='utf-8') as file:
-        prefix = '/home/tomleung/The_Termolator-master/gene_editing/'
+        prefix = '/home/tomleung/Work/The_Termolator-master/gene_editing/'
         for i in glob.glob(file_path):
             file.write(prefix + i.replace('E:\\TomLeung\\Emerging Topics\\output\\', '').replace('\\', '/') + '\n')
 
 
 if __name__ == '__main__':
+    # output_text(db_url='sqlite:///data/gene_editing.db', output_path=r'output/foreground')
     output_list(r'E:\TomLeung\Emerging Topics\output\background\*.txt', r'E:\TomLeung\Emerging Topics\output\background.list')
