@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 from model import get_engine, get_session
 from model.wos_document import *
+from collections import defaultdict, Counter
 
 
 def cal_basic_info(termolator_output_file: str):
@@ -32,7 +33,7 @@ def cal_basic_info(termolator_output_file: str):
                 term_tf = term['total_frequency']
                 term_df = term['number_of_files_containing_term']
                 term_variants = term['variants'].split('|')
-                term_docs = set([i['file'].replace('foreground/', '') for i in term.find_all('instance')])
+                term_docs = Counter([i['file'].replace('foreground/', '') for i in term.find_all('instance')])
 
                 term_dict[term_name] = {
                     'rank': term_rank,
@@ -44,51 +45,110 @@ def cal_basic_info(termolator_output_file: str):
     return term_dict
 
 
+# def cal_doc_info(term_dict: dict, session):
+#
+#     for term, info in term_dict.items():
+#         cited_times = 0
+#
+#         authors = []
+#         refs = []
+#         funds = []
+#         affs = []
+#         keywords = []
+#         keyword_plus = []
+#         cats = []
+#
+#         for unique_id in info['docs']:
+#             doc = session.query(WosDocument).filter(WosDocument.unique_id == unique_id)[0]
+#
+#             cited_times += doc.cited_times
+#
+#             single_doc_authors = [(i.first_name.strip() + i.last_name.strip()).lower() for i in doc.authors]
+#             authors += single_doc_authors
+#
+#             single_doc_refs = [i.document_md5 for i in doc.references]
+#             refs += single_doc_refs
+#
+#             single_doc_funds = [(i.agent + i.funding_number if i.funding_number else '').lower() for i in doc.fundings]
+#             funds += single_doc_funds
+#
+#             single_doc_affs = [i.address.lower() for j in doc.authors for i in j.affiliations]
+#             affs += single_doc_affs
+#
+#             single_doc_keywords = [i.keyword.lower() for i in doc.keywords]
+#             keywords += single_doc_keywords
+#
+#             single_doc_keyword_plus = [i.keyword_plus.lower() for i in doc.keyword_plus]
+#             keyword_plus += single_doc_keyword_plus
+#
+#             single_doc_cats = [i.category.lower() for i in doc.categories]
+#             cats += single_doc_cats
+#
+#         info['author_num'] = len(set(authors))
+#         info['ref_num'] = len(set(refs))
+#         info['aff_num'] = len(set(affs))
+#         info['kw_num'] = len(set(keywords))
+#         info['kp_num'] = len(set(keyword_plus))
+#         info['cat_num'] = len(set(cats))
+#         info['cited_times'] = cited_times
+#
+#         print(term, info)
+#         break
+
+
 def cal_doc_info(term_dict: dict, session):
-
     for term, info in term_dict.items():
-        cited_times = 0
+        cited_times = defaultdict(int)
+        df = defaultdict(int)
+        tf = defaultdict(int)
 
-        authors = []
-        refs = []
-        funds = []
-        affs = []
-        keywords = []
-        keyword_plus = []
-        cats = []
+        authors = defaultdict(set)
+        refs = defaultdict(set)
+        funds = defaultdict(set)
+        affs = defaultdict(set)
+        keywords = defaultdict(set)
+        keyword_plus = defaultdict(set)
+        cats = defaultdict(set)
 
-        for unique_id in info['docs']:
+        for unique_id, term_freq in info['docs'].items():
             doc = session.query(WosDocument).filter(WosDocument.unique_id == unique_id)[0]
+            pub_year = doc.pub_year
 
-            cited_times += doc.cited_times
+            cited_times[pub_year] += doc.cited_times
+            df[pub_year] += 1
+            tf[pub_year] += term_freq
 
             single_doc_authors = [(i.first_name.strip() + i.last_name.strip()).lower() for i in doc.authors]
-            authors += single_doc_authors
+            authors[pub_year] = authors[pub_year].union(set(single_doc_authors))
 
             single_doc_refs = [i.document_md5 for i in doc.references]
-            refs += single_doc_refs
+            refs[pub_year] = refs[pub_year].union(set(single_doc_refs))
 
             single_doc_funds = [(i.agent + i.funding_number if i.funding_number else '').lower() for i in doc.fundings]
-            funds += single_doc_funds
+            funds[pub_year] = funds[pub_year].union(set(single_doc_funds))
 
             single_doc_affs = [i.address.lower() for j in doc.authors for i in j.affiliations]
-            affs += single_doc_affs
+            affs[pub_year] = affs[pub_year].union(set(single_doc_affs))
 
             single_doc_keywords = [i.keyword.lower() for i in doc.keywords]
-            keywords += single_doc_keywords
+            keywords[pub_year] = keywords[pub_year].union(set(single_doc_keywords))
 
             single_doc_keyword_plus = [i.keyword_plus.lower() for i in doc.keyword_plus]
-            keyword_plus += single_doc_keyword_plus
+            keyword_plus[pub_year] = keyword_plus[pub_year].union(set(single_doc_keyword_plus))
 
             single_doc_cats = [i.category.lower() for i in doc.categories]
-            cats += single_doc_cats
+            cats[pub_year] = cats[pub_year].union(set(single_doc_cats))
 
-        info['author_num'] = len(set(authors))
-        info['ref_num'] = len(set(refs))
-        info['aff_num'] = len(set(affs))
-        info['kw_num'] = len(set(keywords))
-        info['kp_num'] = len(set(keyword_plus))
-        info['cat_num'] = len(set(cats))
+        authors, refs, affs, keywords, keyword_plus, cats = map(lambda d: defaultdict(int, {k: len(v) for k, v in d.items()})
+                                                                , (authors, refs, affs, keywords, keyword_plus, cats))
+        info['tf'] = tf
+        info['df'] = df
+        info['author_num'] = authors
+        info['ref_num'] = refs
+        info['aff_num'] = affs
+        info['kw_num'] = keywords
+        info['kp_num'] = keyword_plus
+        info['cat_num'] = cats
         info['cited_times'] = cited_times
 
         print(term, info)
