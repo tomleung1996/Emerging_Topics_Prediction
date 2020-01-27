@@ -139,44 +139,53 @@ def build_np_array(term_dict: dict, delta: float):
     years = list(range(2003, 2019 + 1))
 
     term_num = len(term_dict)  # batch size
-    feature_num = len(features) + 1  # input_dim (plus Emerging-Score)
+    feature_num = len(features) + 2  # input_dim (plus Emerging-Score and category)
     time_span = len(years)  # timesteps
 
     arr = np.zeros((term_num, time_span, feature_num))
+    ordered_list = []
 
     for i, (term, feats) in enumerate(term_dict.items()):
+        ordered_list.append((i, term))
+        # if term == 'clustered interspaced short palindromic repeats':
+        #     print(i, feats)
+
         for j in range(time_span):
-            for k in range(feature_num - 1):
+            for k in range(feature_num - 2):
                 arr[i][j][k] = feats[features[k]][years[j]]
 
             # Calculating the Emerging-Score
             if j != 0:  # Emerging-Score is not defined for the first year
                 df_pos = features.index('df')
-                arr[i][j][-1] = np.log(arr[i][j][df_pos] + delta) * ((arr[i][j][df_pos] + delta) / (arr[i][j-1][df_pos] + delta))
+                arr[i][j][-2] = np.log(arr[i][j][df_pos] + delta) * ((arr[i][j][df_pos] + delta) / (arr[i][j-1][df_pos] + delta))
+
+    pickle.dump(ordered_list, open(r'output/ordered_list.list', mode='wb'))
 
     return arr
 
 
 if __name__ == '__main__':
-    # engine = get_engine(db_url='sqlite:///../data/gene_editing.db')
-    # session = get_session(engine)
-    #
-    # term_dict = cal_basic_info(r'..\data\Termolator_result\gene_editing\gene.term_instance_map')
-    # term_dict = cal_doc_info(term_dict, session)
-    #
-    # print('Dumping term_dict......')
-    # pickle.dump(term_dict, open(r'term.dict', mode='wb'))
-    # print('Done!')
-    #
-    # session.close()
+    engine = get_engine(db_url='sqlite:///../data/transplant.db')
+    session = get_session(engine)
+
+    term_dict = cal_basic_info(r'..\data\Termolator_result\transplant\transplant.term_instance_map')
+    term_dict = cal_doc_info(term_dict, session)
+
+    print('Dumping term_dict......')
+    pickle.dump(term_dict, open(r'term.dict', mode='wb'))
+    print('Done!')
+
+    session.close()
 
     print('Loading term_dict......')
-    term_dict = pickle.load(open(r'term.dict', mode='rb'))
+    term_dict = pickle.load(open(r'output/term.dict', mode='rb'))
     print('Done!\n')
 
     print('Converting dictionary to numpy array......')
     arr = build_np_array(term_dict, 1.0)
     print('Done!\n')
+
+    print(arr.shape)
 
     print('Dumping numpy array......')
     pickle.dump(arr, open(r'result.array', mode='wb'))
