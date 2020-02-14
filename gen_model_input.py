@@ -205,32 +205,32 @@ def build_np_array(term_dict: dict, delta: float):
 
 
 if __name__ == '__main__':
-    engine = get_engine(db_url='sqlite:///../data/transplant.db')
-    session = get_session(engine)
-
-    term_dict = cal_basic_info(r'..\data\Termolator_result\transplant\transplant.term_instance_map')
-    term_dict = cal_doc_info(term_dict, session)
+    # engine = get_engine(db_url='sqlite:///../data/transplant.db')
+    # session = get_session(engine)
+    #
+    # term_dict = cal_basic_info(r'..\data\Termolator_result\transplant\transplant.term_instance_map')
+    # term_dict = cal_doc_info(term_dict, session)
 
     # print('Dumping term_dict......')
     # pickle.dump(term_dict, open(r'term.dict', mode='wb'))
     # print('Done!')
 
-    session.close()
+    # session.close()
 
-    # print('Loading term_dict......')
-    # term_dict = pickle.load(open(r'output/gene_editing/term.dict', mode='rb'))
-    # print('Done!\n')
-    #
-    # print('Converting dictionary to numpy array......')
-    # arr = build_np_array(term_dict, 1.0)
-    # print('Done!\n')
-    #
-    # print(arr.shape)
-    #
-    # print('Dumping numpy array......')
-    # pickle.dump(arr, open(r'result.array', mode='wb'))
-    # print('Done!')
+    print('Loading term_dict......')
+    term_dict = pickle.load(open(r'output/gene_editing/term.dict', mode='rb'))
+    print('Done!\n')
 
-    # print(next(iter(term_dict.values())))
-    # print(arr[0])
+    print('Converting dictionary to numpy array......')
+    arr = build_np_array(term_dict, 1.0)
+    print('Done!\n')
+
+    print(arr.shape)
+
+    print('Dumping numpy array......')
+    pickle.dump(arr, open(r'output/result.array', mode='wb'))
+    print('Done!')
+
+    print(next(iter(term_dict.values())))
+    print(arr[0])
     pass
