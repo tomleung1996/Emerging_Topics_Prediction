@@ -424,6 +424,6 @@ def parse(input_dir=None, db_path=None, db_url=None):
 
 
 if __name__ == '__main__':
-    parse(input_dir=r'C:\Users\Tom\Desktop\Transplant',
-          db_path=r'C:\Users\Tom\Desktop\tresult')
+    parse(input_dir=r'C:\Users\Tom Leung\Desktop\in',
+          db_path=r'C:\Users\Tom Leung\Desktop\in')
     pass
