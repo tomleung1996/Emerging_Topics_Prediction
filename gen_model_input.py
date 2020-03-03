@@ -9,7 +9,7 @@ import math
 from sqlalchemy.orm import selectinload
 
 
-def cal_basic_info(termolator_output_file: str):
+def cal_basic_info(termolator_output_file: str, df_threshold:int):
     """
 
     **THIS SHOULD BE CALLED BEFORE FURTHER CALCULATING ANY OTHER PROPERTIES**
@@ -38,6 +38,10 @@ def cal_basic_info(termolator_output_file: str):
                 term_rank = term['rank']
                 term_tf = term['total_frequency']
                 term_df = term['number_of_files_containing_term']
+
+                if int(term_df) < df_threshold:
+                    continue
+
                 term_variants = term['variants'].split('|')
                 term_docs = Counter([i['file'].replace('foreground/', '') for i in term.find_all('instance')])
 
@@ -143,7 +147,7 @@ def cal_doc_info(term_dict: dict, session):
     return term_dict
 
 
-def build_np_array(term_dict: dict, delta: float):
+def build_np_array(term_dict: dict, threshold_dict: dict, delta: float, decay: float):
     """
 
     Convert the term_dict to the corresponding numpy array.
@@ -155,19 +159,27 @@ def build_np_array(term_dict: dict, delta: float):
     :param delta: The smoothing factor to avoid divided by zero
     :return: The corresponding numpy array
     """
+    assert decay < 1.0
 
     # no aff_num for now
     features = ['df', 'tf', 'author_num', 'ref_num', 'fund_num', 'kw_num', 'kp_num', 'cat_num', 'cited_times']
     years = list(range(2003, 2019 + 1))
 
-    term_num = len(term_dict)  # batch size
+    # term_num = len(term_dict)  # batch size
+    term_num = len(threshold_dict)
     feature_num = len(features) + 2  # input_dim (plus Emerging-Score and category)
     time_span = len(years)  # timesteps
 
     arr = np.zeros((term_num, time_span, feature_num))
     ordered_list = []
 
-    for i, (term, feats) in enumerate(term_dict.items()):
+    new_term_dict = {}
+    for term, feats in term_dict.items():
+        if term not in threshold_dict:
+            continue
+        new_term_dict[term] = feats
+
+    for i, (term, feats) in enumerate(new_term_dict.items()):
         ordered_list.append((i, term))
         # if term == 'clustered interspaced short palindromic repeats':
         #     print(i, feats)
@@ -181,13 +193,18 @@ def build_np_array(term_dict: dict, delta: float):
                 df_pos = features.index('df')
                 arr[i][j][-2] = np.log(arr[i][j][df_pos] + delta) * ((arr[i][j][df_pos] + delta) / (arr[i][j-1][df_pos] + delta))
 
+                # Special treatment
+                # Add decay to prevent the Emerging-Score decrease sharply to zero
+                if arr[i][j][-2] == 0:
+                    arr[i][j][-2] = arr[i][j-1][-2] * decay
+
     pickle.dump(ordered_list, open(r'output/ordered_list.list', mode='wb'))
 
     es = arr[:, :, -2]
     ps = np.percentile(es, [70, 85, 95], axis=0)
 
     # Assign classes
-    for i in range(len(term_dict.items())):
+    for i in range(term_num):
         for j in range(time_span):
             cur_es = arr[i][j][-2]
             if cur_es == 0:
@@ -208,7 +225,7 @@ if __name__ == '__main__':
     # engine = get_engine(db_url='sqlite:///../data/transplant.db')
     # session = get_session(engine)
     #
-    # term_dict = cal_basic_info(r'..\data\Termolator_result\transplant\transplant.term_instance_map')
+    threshold_dict = cal_basic_info(r'..\data\Termolator_result\transplant\transplant.term_instance_map', 50)
     # term_dict = cal_doc_info(term_dict, session)
 
     # print('Dumping term_dict......')
@@ -218,19 +235,19 @@ if __name__ == '__main__':
     # session.close()
 
     print('Loading term_dict......')
-    term_dict = pickle.load(open(r'output/gene_editing/term.dict', mode='rb'))
+    term_dict = pickle.load(open(r'output/transplant/term.dict', mode='rb'))
     print('Done!\n')
 
     print('Converting dictionary to numpy array......')
-    arr = build_np_array(term_dict, 1.0)
+    arr = build_np_array(term_dict, threshold_dict, 1.0, 0.8)
     print('Done!\n')
 
     print(arr.shape)
 
     print('Dumping numpy array......')
-    pickle.dump(arr, open(r'output/result.array', mode='wb'))
+    pickle.dump(arr, open(r'output/threshold_decay_result.array', mode='wb'))
     print('Done!')
 
-    print(next(iter(term_dict.values())))
-    print(arr[0])
+    # print(next(iter(term_dict.values())))
+    # print(arr[0])
     pass
