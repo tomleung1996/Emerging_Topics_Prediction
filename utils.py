@@ -32,12 +32,12 @@ def cal_ndcg(n, true, pred):
         pred_array[i] = np.array([i + 1, num[0]])
 
     # 使用工业界的算法
-    #     ideal_score = np.sum((2 ** true_array[:, 1] - 1) / np.log2(true_array[:, 0] + 1))
-    #     pred_score = np.sum((2 ** pred_array[:, 1] - 1) / np.log2(pred_array[:, 0] + 1))
+        ideal_score = np.sum((2 ** true_array[:, 1] - 1) / np.log2(true_array[:, 0] + 1))
+        pred_score = np.sum((2 ** pred_array[:, 1] - 1) / np.log2(pred_array[:, 0] + 1))
 
     # 使用普通的算法
-    ideal_score = np.sum((true_array[:, 1]) / np.log2(true_array[:, 0] + 1))
-    pred_score = np.sum((pred_array[:, 1]) / np.log2(pred_array[:, 0] + 1))
+    # ideal_score = np.sum((true_array[:, 1]) / np.log2(true_array[:, 0] + 1))
+    # pred_score = np.sum((pred_array[:, 1]) / np.log2(pred_array[:, 0] + 1))
 
     return pred_score / ideal_score
 
@@ -58,8 +58,8 @@ def eval_model(method, y_true_1, y_pred_1, scaler):
         y_true = scaler.inverse_transform(y_true_1)
         y_pred = scaler.inverse_transform(y_pred_1)
     else:
-        y_true = y_true_1
-        y_pred = y_pred_1
+        y_true = y_true_1.copy()
+        y_pred = y_pred_1.copy()
 
     if method.lower() == 'mae':
         errors = np.abs(y_true - y_pred)
@@ -106,15 +106,15 @@ def eval_model(method, y_true_1, y_pred_1, scaler):
         ps_true = np.percentile(y_true, percentiles, axis=0)
         ps_pred = np.percentile(y_pred, percentiles, axis=0)
 
-        _y_true = y_true[:]
-        _y_pred = y_pred[:]
+        _y_true = y_true.copy()
+        _y_pred = y_pred.copy()
 
         for i in range(_y_true.shape[0]):
             for j in range(_y_true.shape[1]):
                 true_es = _y_true[i][j]
                 pred_es = _y_pred[i][j]
 
-                if np.isclose(true_es, 0):
+                if np.isclose(true_es, 0.0):
                     _y_true[i][j] = 0
                 elif 0 < true_es < ps_true[0][j]:
                     _y_true[i][j] = 1  # Below the 70th percentile
@@ -126,13 +126,13 @@ def eval_model(method, y_true_1, y_pred_1, scaler):
                     _y_true[i][j] = 4  # Top classes
 
 
-                if np.isclose(pred_es, 0):
+                if np.isclose(pred_es, 0.0):
                     _y_pred[i][j] = 0
                 elif 0 < pred_es < ps_pred[0][j]:
                     _y_pred[i][j] = 1  # Below the 70th percentile
-                elif ps_true[0][j] <= pred_es < ps_pred[1][j]:
+                elif ps_pred[0][j] <= pred_es < ps_pred[1][j]:
                     _y_pred[i][j] = 2  # Below the 85th percentile
-                elif ps_true[1][j] <= pred_es < ps_pred[2][j]:
+                elif ps_pred[1][j] <= pred_es < ps_pred[2][j]:
                     _y_pred[i][j] = 3  # Below the 95th percentile
                 else:
                     _y_pred[i][j] = 4  # Top classes
