@@ -188,15 +188,38 @@ def build_np_array(term_dict: dict, threshold_dict: dict, delta: float, decay: f
             for k in range(feature_num - 2):
                 arr[i][j][k] = feats[features[k]][years[j]]
 
-            # Calculating the Emerging-Score
-            if j != 0:  # Emerging-Score is not defined for the first year
+    for i, (term, feats) in enumerate(new_term_dict.items()):
+        for j in range(time_span):
+            for k in range(feature_num - 2):
+                # Calculating the Emerging-Score
                 df_pos = features.index('df')
-                arr[i][j][-2] = np.log(arr[i][j][df_pos] + delta) * ((arr[i][j][df_pos] + delta) / (arr[i][j-1][df_pos] + delta))
+                if j != 0:  # Emerging-Score is not defined for the first year (fix: the first year also has Emerging-Score)
 
-                # Special treatment
-                # Add decay to prevent the Emerging-Score decrease sharply to zero
-                if arr[i][j][-2] == 0:
-                    arr[i][j][-2] = arr[i][j-1][-2] * decay
+                    if arr[i][j-1][df_pos] == 0:
+                        arr[i][j][-2] = np.log(arr[i][j][df_pos] + delta)
+                    else:
+                        arr[i][j][-2] = np.log(arr[i][j][df_pos] + delta) * ((arr[i][j][df_pos] + delta) / (arr[i][j - 1][df_pos] + delta))
+
+
+                    # New cumulative method
+                    # 用衰减存量增长也不合适，因为后期总体的趋势是下降，越来越难增长
+                    # if np.sum(arr[i, :j, df_pos]) == 0:
+                    #     # 说明还没增长过
+                    #     arr[i][j][-2] = np.log(arr[i, j, df_pos] + delta)
+                    # else:
+                    #     arr[i][j][-2] = np.log(np.sum(arr[i, :j, df_pos] * np.logspace(j, 1, j, base=decay)) + arr[i, j, df_pos] + delta) * \
+                    #                     ((arr[i, j, df_pos]) / (arr[i, j-1, df_pos] + delta))
+
+                    # New relative method
+                    # arr[i][j][-2] = (arr[i, j, df_pos] / np.max(arr[:, j, df_pos])) * ((arr[i, j, df_pos]) / (arr[i, j - 1, df_pos] + delta))
+
+                    # Special treatment
+                    # Add decay to prevent the Emerging-Score decrease sharply to zero
+                    # if arr[i][j][-2] == 0:
+                    #     arr[i][j][-2] = arr[i][j - 1][-2] * decay
+                else:
+                    arr[i][j][-2] = np.log(arr[i, j, df_pos] + delta)
+                    # arr[i][j][-2] = (arr[i, j, df_pos] / np.max(arr[:, j, df_pos]))
 
     pickle.dump(ordered_list, open(r'output/ordered_list.list', mode='wb'))
 
@@ -207,9 +230,10 @@ def build_np_array(term_dict: dict, threshold_dict: dict, delta: float, decay: f
     for i in range(term_num):
         for j in range(time_span):
             cur_es = arr[i][j][-2]
-            if cur_es == 0:
-                arr[i][j][-1] = 0
-            elif 0 < cur_es < ps[0][j]:
+            # if cur_es == 0:
+            #     arr[i][j][-1] = 0
+            # elif 0 < cur_es < ps[0][j]:
+            if cur_es < ps[0][j]:
                 arr[i][j][-1] = 1  # Below the 70th percentile
             elif ps[0][j] <= cur_es < ps[1][j]:
                 arr[i][j][-1] = 2  # Below the 85th percentile
@@ -225,7 +249,7 @@ if __name__ == '__main__':
     # engine = get_engine(db_url='sqlite:///../data/transplant.db')
     # session = get_session(engine)
     #
-    threshold_dict = cal_basic_info(r'..\data\Termolator_result\transplant\transplant.term_instance_map', 50)
+    threshold_dict = cal_basic_info(r'..\data\Termolator_result\transplant\transplant.term_instance_map', 0)
     # term_dict = cal_doc_info(term_dict, session)
 
     # print('Dumping term_dict......')
@@ -239,13 +263,13 @@ if __name__ == '__main__':
     print('Done!\n')
 
     print('Converting dictionary to numpy array......')
-    arr = build_np_array(term_dict, threshold_dict, 1.0, 0.8)
+    arr = build_np_array(term_dict, threshold_dict, delta=1.0, decay=0.9)
     print('Done!\n')
 
     print(arr.shape)
 
     print('Dumping numpy array......')
-    pickle.dump(arr, open(r'output/threshold_decay_result.array', mode='wb'))
+    pickle.dump(arr, open(r'output/old_school.array', mode='wb'))
     print('Done!')
 
     # print(next(iter(term_dict.values())))

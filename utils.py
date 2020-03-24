@@ -114,9 +114,10 @@ def eval_model(method, y_true_1, y_pred_1, scaler):
                 true_es = _y_true[i][j]
                 pred_es = _y_pred[i][j]
 
-                if np.isclose(true_es, 0.0):
-                    _y_true[i][j] = 0
-                elif 0 < true_es < ps_true[0][j]:
+                # if np.isclose(true_es, 0.0):
+                #     _y_true[i][j] = 0
+                # elif 0 < true_es < ps_true[0][j]:
+                if true_es < ps_true[0][j]:
                     _y_true[i][j] = 1  # Below the 70th percentile
                 elif ps_true[0][j] <= true_es < ps_true[1][j]:
                     _y_true[i][j] = 2  # Below the 85th percentile
@@ -126,9 +127,10 @@ def eval_model(method, y_true_1, y_pred_1, scaler):
                     _y_true[i][j] = 4  # Top classes
 
 
-                if np.isclose(pred_es, 0.0):
-                    _y_pred[i][j] = 0
-                elif 0 < pred_es < ps_pred[0][j]:
+                # if np.isclose(pred_es, 0.0):
+                #     _y_pred[i][j] = 0
+                # elif 0 < pred_es < ps_pred[0][j]:
+                if pred_es < ps_pred[0][j]:
                     _y_pred[i][j] = 1  # Below the 70th percentile
                 elif ps_pred[0][j] <= pred_es < ps_pred[1][j]:
                     _y_pred[i][j] = 2  # Below the 85th percentile
@@ -188,8 +190,18 @@ def split_data(data, n_input, ratio):
     X, y = data[:, :n_input, :], data[:, n_input:, -2]
     return train_test_split(X, y, test_size=ratio, random_state=20200214, shuffle=True, stratify=data[:, n_input, -1])
 
+
 def split_data_with_index(data, n_input, ratio):
     X, y = data[:, :n_input, :], data[:, n_input:, -2]
     ids = np.arange(len(X))
     return train_test_split(X, y, ids, test_size=ratio, random_state=20200214, shuffle=True, stratify=data[:, n_input, -1])
 
+
+def split_data_by_time(data, n_input, n_output, multi_targets):
+    if multi_targets:
+        X_train, y_train = data[:, :n_input, :], data[:, n_input:-n_output, :]
+        X_test, y_test = data[:, -(n_input + n_output):-n_output, :], data[:, -n_output:, :]
+    else:
+        X_train, y_train = data[:, :n_input, :], data[:, n_input:-n_output, -2]
+        X_test, y_test = data[:, -(n_input + n_output):-n_output, :], data[:, -n_output:, -2]
+    return X_train, X_test, y_train, y_test
