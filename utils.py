@@ -52,6 +52,8 @@ def eval_model(method, y_true_1, y_pred_1, scaler):
     :param scaler: the scaler used in data pre-processing
     :return:
     """
+    assert y_true_1.shape == y_pred_1.shape
+
     if scaler is not None:
         # y_true = scaler.inverse_transform(y_true_1.reshape(-1, 1)).reshape(y_true_1.shape)
         # y_pred = scaler.inverse_transform(y_pred_1.reshape(-1, 1)).reshape(y_pred_1.shape)
@@ -83,7 +85,9 @@ def eval_model(method, y_true_1, y_pred_1, scaler):
         return overall_rmse, annual_rmse
 
     if method.lower() == 'mape':
-        errors = np.abs((y_true - y_pred) / y_true)
+        # 因为真实的y_true有0，会导致mape非常大，所以不还原了
+        # errors = np.abs((y_true - y_pred) / y_true)
+        errors = np.abs((y_true_1 - y_pred_1) / y_true_1)
         annual_mape = np.mean(errors, axis=0)
         overall_mape = np.mean(errors, axis=None)
 
@@ -102,6 +106,7 @@ def eval_model(method, y_true_1, y_pred_1, scaler):
         return overall_ndcg, annual_ndcg
 
     if method.lower() == 'classification':
+        # 存在问题，因为是预测分数之后按排位来分类，所以最后的准确率、召回率、F1是一样的
         percentiles = [70, 85, 95]
         ps_true = np.percentile(y_true, percentiles, axis=0)
         ps_pred = np.percentile(y_pred, percentiles, axis=0)

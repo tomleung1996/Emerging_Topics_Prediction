@@ -161,8 +161,8 @@ def build_np_array(term_dict: dict, threshold_dict: dict, delta: float, decay: f
     """
     assert decay < 1.0
 
-    # no aff_num for now
-    features = ['df', 'tf', 'author_num', 'ref_num', 'fund_num', 'kw_num', 'kp_num', 'cat_num', 'cited_times']
+    # no aff_num for now, no cited_times for reality reason
+    features = ['df', 'tf', 'author_num', 'ref_num', 'fund_num', 'kw_num', 'kp_num', 'cat_num']
     years = list(range(2003, 2019 + 1))
 
     # term_num = len(term_dict)  # batch size
@@ -196,9 +196,15 @@ def build_np_array(term_dict: dict, threshold_dict: dict, delta: float, decay: f
                 if j != 0:  # Emerging-Score is not defined for the first year (fix: the first year also has Emerging-Score)
 
                     if arr[i][j-1][df_pos] == 0:
-                        arr[i][j][-2] = np.log(arr[i][j][df_pos] + delta)
+                        # arr[i][j][-2] = np.log(arr[i][j][df_pos] + delta)
+                        # To avoid successive zeros differ in Emerging-Score
+                        if arr[i][j][df_pos] == 0:
+                            arr[i][j][-2] = arr[i][j-1][-2] * decay
+                        else:
+                            arr[i][j][-2] = np.log(np.sum(arr[i, :j, df_pos] * np.logspace(j, 1, j, base=decay)) + arr[i, j, df_pos] + delta)
                     else:
-                        arr[i][j][-2] = np.log(arr[i][j][df_pos] + delta) * ((arr[i][j][df_pos] + delta) / (arr[i][j - 1][df_pos] + delta))
+                        # arr[i][j][-2] = np.log(arr[i][j][df_pos] + delta) * ((arr[i][j][df_pos] + delta) / (arr[i][j - 1][df_pos] + delta))
+                        arr[i][j][-2] = np.log(np.sum(arr[i, :j, df_pos] * np.logspace(j, 1, j, base=decay)) + arr[i, j, df_pos] + delta) * ((arr[i][j][df_pos] + delta) / (arr[i][j - 1][df_pos] + delta))
 
 
                     # New cumulative method
@@ -249,7 +255,7 @@ if __name__ == '__main__':
     # engine = get_engine(db_url='sqlite:///../data/transplant.db')
     # session = get_session(engine)
     #
-    threshold_dict = cal_basic_info(r'..\data\Termolator_result\transplant\transplant.term_instance_map', 0)
+    threshold_dict = cal_basic_info(r'..\data\Termolator_result\gene_editing\gene.term_instance_map', 0)
     # term_dict = cal_doc_info(term_dict, session)
 
     # print('Dumping term_dict......')
@@ -259,7 +265,7 @@ if __name__ == '__main__':
     # session.close()
 
     print('Loading term_dict......')
-    term_dict = pickle.load(open(r'output/transplant/term.dict', mode='rb'))
+    term_dict = pickle.load(open(r'output/gene_editing/term.dict', mode='rb'))
     print('Done!\n')
 
     print('Converting dictionary to numpy array......')
@@ -269,7 +275,7 @@ if __name__ == '__main__':
     print(arr.shape)
 
     print('Dumping numpy array......')
-    pickle.dump(arr, open(r'output/old_school.array', mode='wb'))
+    pickle.dump(arr, open(r'output/es_with_decay.array', mode='wb'))
     print('Done!')
 
     # print(next(iter(term_dict.values())))
