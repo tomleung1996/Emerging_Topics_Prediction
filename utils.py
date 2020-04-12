@@ -32,8 +32,8 @@ def cal_ndcg(n, true, pred):
         pred_array[i] = np.array([i + 1, num[0]])
 
     # 使用工业界的算法
-        ideal_score = np.sum((2 ** true_array[:, 1] - 1) / np.log2(true_array[:, 0] + 1))
-        pred_score = np.sum((2 ** pred_array[:, 1] - 1) / np.log2(pred_array[:, 0] + 1))
+    ideal_score = np.sum((2 ** true_array[:, 1] - 1) / np.log2(true_array[:, 0] + 1))
+    pred_score = np.sum((2 ** pred_array[:, 1] - 1) / np.log2(pred_array[:, 0] + 1))
 
     # 使用普通的算法
     # ideal_score = np.sum((true_array[:, 1]) / np.log2(true_array[:, 0] + 1))
