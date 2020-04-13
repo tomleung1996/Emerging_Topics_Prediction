@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, PowerTransformer, QuantileTransformer
-from sklearn.metrics import classification_report, mean_squared_error, precision_score
+from sklearn.metrics import classification_report, mean_squared_error, precision_score, r2_score
 
 
 def cal_ndcg(n, true, pred):
@@ -104,6 +104,36 @@ def eval_model(method, y_true_1, y_pred_1, scaler):
         overall_ndcg = cal_ndcg(n, np.sum(y_true, axis=1), np.sum(y_pred, axis=1))
 
         return overall_ndcg, annual_ndcg
+
+    if method.lower() == 'r2':
+        overall_r2 = r2_score(y_true.reshape(-1), y_pred.reshape(-1))
+        annual_r2 = []
+        samples, years = y_true.shape
+
+        for year in range(years):
+            annual_r2.append(r2_score(y_true[:, year].reshape(-1), y_pred[:, year].reshape(-1)))
+
+        return overall_r2, annual_r2
+
+    if method.lower() == 'pearson':
+        overall_pearson= np.corrcoef(y_true.reshape(-1), y_pred.reshape(-1))[0, 1]
+        annual_pearson = []
+        samples, years = y_true.shape
+
+        for year in range(years):
+            annual_pearson.append(np.corrcoef(y_true[:, year].reshape(-1), y_pred[:, year].reshape(-1))[0, 1])
+
+        return overall_pearson, annual_pearson
+
+    if method.lower() == 'acc':
+        overall_acc = np.sum(np.abs(y_true.reshape(-1) - y_pred.reshape(-1)) <= 0.3) / (len(y_true)*5)
+        annual_acc = []
+        samples, years = y_true.shape
+
+        for year in range(years):
+            annual_acc.append(np.sum(np.abs(y_true[:, year].reshape(-1) - y_pred[:, year].reshape(-1)) <= 0.3) / len(y_true))
+
+        return overall_acc, annual_acc
 
     if method.lower() == 'classification':
         # 存在问题，因为是预测分数之后按排位来分类，所以最后的准确率、召回率、F1是一样的
