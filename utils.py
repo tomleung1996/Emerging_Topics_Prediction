@@ -42,7 +42,7 @@ def cal_ndcg(n, true, pred):
     return pred_score / ideal_score
 
 
-def eval_model(method, y_true_1, y_pred_1, scaler):
+def eval_model(method, y_true_1, y_pred_1, scaler, n=20):
     """
     Model evaluation (after transforming to the original scale)
 
@@ -94,7 +94,7 @@ def eval_model(method, y_true_1, y_pred_1, scaler):
         return overall_mape, annual_mape
 
     if method.lower() == 'ndcg':
-        n = 20
+        # n = 20
         samples, years = y_true.shape
         annual_ndcg = []
 
